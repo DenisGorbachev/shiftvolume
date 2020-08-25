@@ -9,8 +9,9 @@ Sideshift Volume Tracker allows traders to bet on the increase of SideShift volu
 * Type: ERC-20 token
 * Supply: variable, depending on price
 * Price: within 5% of "24h volume on sideshift.ai converted to USD and divided by 1,000,000"
-* Rebase period: every 24 hours at 00:05 UTC.
+* Rebase period: every 24 hours at 00:05 UTC
 * Rebase formula: [see here](#rebase-formula)
+* Source code: [Ampleforth](https://github.com/ampleforth/uFragments) fork 
 
 ## Rebase formula
 
