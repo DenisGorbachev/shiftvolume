@@ -24,3 +24,48 @@ Sideshift Volume Tracker allows traders to bet on the increase of SideShift volu
 ## Exchanges
 
 TODO
+
+## Install
+
+```bash
+# Install project dependencies
+npm install
+
+# Install ethereum local blockchain(s) and associated dependencies
+npx setup-local-chains
+```
+
+## Test
+
+``` bash
+# You can use the following command to start a local blockchain instance
+npx start-chain [ganacheUnitTest|gethUnitTest]
+
+# Run all unit tests
+npm test
+
+# Run unit tests in isolation
+npx truffle --network ganacheUnitTest test test/unit/uFragments.js
+
+# Lint code
+npm run lint
+
+# View code coverage
+npm run coverage
+```
+
+## Addresses (mainnet)
+
+- ERC-20 Token: [TODO](https://etherscan.io/token/TODO)
+- Supply Policy: [TODO](https://etherscan.io/address/TODO)
+- Orchestrator: [TODO](https://etherscan.io/address/TODO)
+- Market Oracle: [TODO](https://etherscan.io/address/TODO)
+- CPI Oracle: [TODO](https://etherscan.io/address/TODO)
+
+## Addresses (testnet)
+
+- ERC-20 Token: [TODO](https://kovan.etherscan.io/token/TODO)
+- Supply Policy: [TODO](https://kovan.etherscan.io/address/TODO)
+- Orchestrator: [TODO](https://kovan.etherscan.io/address/TODO)
+- Market Oracle: [TODO](https://kovan.etherscan.io/address/TODO)
+- CPI Oracle: [TODO](https://kovan.etherscan.io/address/TODO)
