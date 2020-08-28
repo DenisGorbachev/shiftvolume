@@ -29,23 +29,19 @@ contract UFragmentsPolicy is Ownable {
 
     event LogRebase(
         uint256 indexed epoch,
-        uint256 exchangeRate,
-        uint256 cpi,
+        uint256 currentRate,
+        uint256 targetRate,
         int256 requestedSupplyAdjustment,
         uint256 timestampSec
     );
 
     UFragments public uFrags;
 
-    // Provides the current CPI, as an 18 decimal fixed point number.
-    IOracle public cpiOracle;
+    // Current price (as an 18 decimal fixed point number)
+    uint256 public storedCurrentRate;
 
-    // Market oracle provides the token/USD exchange rate as an 18 decimal fixed point number.
-    // (eg) An oracle value of 1.5e18 it would mean 1 Ample is trading for $1.50.
-    IOracle public marketOracle;
-
-    // CPI value at the time of launch, as an 18 decimal fixed point number.
-    uint256 private baseCpi;
+    // Target price (as an 18 decimal fixed point number)
+    uint256 public storedTargetRate;
 
     // If the current exchange rate is within this fractional distance from the target, no supply
     // update is performed. Fixed point number--same format as the rate.
@@ -66,10 +62,10 @@ contract UFragmentsPolicy is Ownable {
 
     // The rebase window begins this many seconds into the minRebaseTimeInterval period.
     // For example if minRebaseTimeInterval is 24hrs, it represents the time of day in seconds.
-    uint256 public rebaseWindowOffsetSec;
+    uint256 public rebaseWindowOffsetSec = 7200;
 
     // The length of the time window where a rebase operation is allowed to execute, in seconds.
-    uint256 public rebaseWindowLengthSec;
+    uint256 public rebaseWindowLengthSec = 1200;
 
     // The number of rebase cycles since inception
     uint256 public epoch;
@@ -97,7 +93,7 @@ contract UFragmentsPolicy is Ownable {
      *      Where DeviationFromTargetRate is (MarketOracleRate - targetRate) / targetRate
      *      and targetRate is CpiOracleRate / baseCpi
      */
-    function rebase() external onlyOrchestrator {
+    function rebase(uint256 _storedCurrentRate, uint256 _storedTargetRate) external onlyOrchestrator {
         require(inRebaseWindow());
 
         // This comparison also ensures there is no reentrancy.
@@ -109,23 +105,15 @@ contract UFragmentsPolicy is Ownable {
 
         epoch = epoch.add(1);
 
-        uint256 cpi;
-        bool cpiValid;
-        (cpi, cpiValid) = cpiOracle.getData();
-        require(cpiValid);
+        require(_storedCurrentRate > 0);
+        require(_storedCurrentRate <= MAX_RATE);
+        storedCurrentRate = _storedCurrentRate;
 
-        uint256 targetRate = cpi.mul(10 ** DECIMALS).div(baseCpi);
+        require(_storedCurrentRate > 0);
+        require(_storedCurrentRate <= MAX_RATE);
+        storedTargetRate = _storedTargetRate;
 
-        uint256 exchangeRate;
-        bool rateValid;
-        (exchangeRate, rateValid) = marketOracle.getData();
-        require(rateValid);
-
-        if (exchangeRate > MAX_RATE) {
-            exchangeRate = MAX_RATE;
-        }
-
-        int256 supplyDelta = computeSupplyDelta(exchangeRate, targetRate);
+        int256 supplyDelta = computeSupplyDelta(storedCurrentRate, storedTargetRate);
 
         // Apply the Dampening factor.
         supplyDelta = supplyDelta.div(rebaseLag.toInt256Safe());
@@ -136,29 +124,7 @@ contract UFragmentsPolicy is Ownable {
 
         uint256 supplyAfterRebase = uFrags.rebase(epoch, supplyDelta);
         assert(supplyAfterRebase <= MAX_SUPPLY);
-        emit LogRebase(epoch, exchangeRate, cpi, supplyDelta, now);
-    }
-
-    /**
-     * @notice Sets the reference to the CPI oracle.
-     * @param cpiOracle_ The address of the cpi oracle contract.
-     */
-    function setCpiOracle(IOracle cpiOracle_)
-        external
-        onlyOwner
-    {
-        cpiOracle = cpiOracle_;
-    }
-
-    /**
-     * @notice Sets the reference to the market oracle.
-     * @param marketOracle_ The address of the market oracle contract.
-     */
-    function setMarketOracle(IOracle marketOracle_)
-        external
-        onlyOwner
-    {
-        marketOracle = marketOracle_;
+        emit LogRebase(epoch, storedCurrentRate, storedTargetRate, supplyDelta, now);
     }
 
     /**
@@ -233,7 +199,7 @@ contract UFragmentsPolicy is Ownable {
      *      It is called at the time of contract creation to invoke parent class initializers and
      *      initialize the contract's state variables.
      */
-    function initialize(address owner_, UFragments uFrags_, uint256 baseCpi_)
+    function initialize(address owner_, UFragments uFrags_)
         public
         initializer
     {
@@ -242,15 +208,15 @@ contract UFragmentsPolicy is Ownable {
         // deviationThreshold = 0.05e18 = 5e16
         deviationThreshold = 5 * 10 ** (DECIMALS-2);
 
-        rebaseLag = 30;
+        rebaseLag = 4;
         minRebaseTimeIntervalSec = 1 days;
-        rebaseWindowOffsetSec = 72000;  // 8PM UTC
-        rebaseWindowLengthSec = 15 minutes;
+        // allow rebases at any time of day
+        rebaseWindowOffsetSec = 0;
+        rebaseWindowLengthSec = 1 days;
         lastRebaseTimestampSec = 0;
         epoch = 0;
 
         uFrags = uFrags_;
-        baseCpi = baseCpi_;
     }
 
     /**
@@ -301,4 +267,7 @@ contract UFragmentsPolicy is Ownable {
         return (rate >= targetRate && rate.sub(targetRate) < absoluteDeviationThreshold)
             || (rate < targetRate && targetRate.sub(rate) < absoluteDeviationThreshold);
     }
+
+    // Reserved storage space to allow for layout changes in the future.
+    uint256[50] private ______gap;
 }

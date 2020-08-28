@@ -25,11 +25,11 @@ contract Orchestrator is Ownable {
 
     UFragmentsPolicy public policy;
 
-    /**
-     * @param policy_ Address of the UFragments policy.
-     */
-    constructor(address policy_) public {
-        Ownable.initialize(msg.sender);
+    function initialize(address owner_, address policy_)
+        public
+        initializer
+    {
+        Ownable.initialize(owner_);
         policy = UFragmentsPolicy(policy_);
     }
 
@@ -41,12 +41,13 @@ contract Orchestrator is Ownable {
      *         If a transaction in the transaction list reverts, it is swallowed and the remaining
      *         transactions are executed.
      */
-    function rebase()
+    function rebase(uint256 _storedCurrentRate, uint256 _storedTargetRate)
         external
+        onlyOwner
     {
         require(msg.sender == tx.origin);  // solhint-disable-line avoid-tx-origin
 
-        policy.rebase();
+        policy.rebase(_storedCurrentRate, _storedTargetRate);
 
         for (uint i = 0; i < transactions.length; i++) {
             Transaction storage t = transactions[i];

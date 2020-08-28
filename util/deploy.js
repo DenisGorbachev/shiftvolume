@@ -2,6 +2,8 @@
 global.artifacts = artifacts;
 global.web3 = web3;
 
+const BigNumber = web3.BigNumber;
+
 // Import dependencies from OpenZeppelin SDK programmatic library
 const { Contracts, ProxyAdminProject, SimpleProject, ZWeb3 } = require('@openzeppelin/upgrades');
 
@@ -17,15 +19,23 @@ async function main() {
 
   const UFragments = Contracts.getFromLocal('UFragments');
   const UFragmentsPolicy = Contracts.getFromLocal('UFragmentsPolicy');
-
-  // cpiOracle should provide cpi as [desired rate] * 1000000000000000000
-  const baseCpi = 1000000000000000000;
+  const Orchestrator = Contracts.getFromLocal('Orchestrator');
 
   const UFragmentsInstance = await project.createProxy(UFragments, { initArgs: [creatorAddress] });
-  console.log('UFragmentsInstance.address', Object.keys(UFragmentsInstance._address));
-  const UFragmentsPolicyInstance = await project.createProxy(UFragmentsPolicy, { initArgs: [creatorAddress, UFragmentsInstance.options.address, baseCpi] });
+  const UFragmentsPolicyInstance = await project.createProxy(UFragmentsPolicy, { initArgs: [creatorAddress, UFragmentsInstance.options.address] });
+  const OrchestratorInstance = await project.createProxy(Orchestrator, { initArgs: [creatorAddress, UFragmentsPolicyInstance.options.address] });
+  const setOrchestratorResult = await UFragmentsPolicyInstance.methods.setOrchestrator(OrchestratorInstance.options.address).send({ from: creatorAddress });
+  const setMonetaryPolicyResult = await UFragmentsInstance.methods.setMonetaryPolicy(UFragmentsPolicyInstance.options.address).send({ from: creatorAddress });
 
-  console.log('UFragments\'s name:', (await UFragmentsInstance.methods.name().call({ from: creatorAddress })).toString());
+  console.log('setOrchestratorResult', setOrchestratorResult);
+  console.log('setMonetaryPolicyResult', setMonetaryPolicyResult);
+
+  console.info('UFragments', UFragmentsInstance.options.address);
+  console.info('UFragmentsPolicy', UFragmentsPolicyInstance.options.address);
+  console.info('Orchestrator', OrchestratorInstance.options.address);
+  console.info('');
+  console.info('yarn verify:ganache', UFragmentsInstance.options.address, UFragmentsPolicyInstance.options.address, OrchestratorInstance.options.address);
+  console.info('yarn rebase:ganache', UFragmentsInstance.options.address, UFragmentsPolicyInstance.options.address, OrchestratorInstance.options.address, '1.0', '2.0');
 }
 
 // For truffle exec
