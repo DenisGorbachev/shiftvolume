@@ -1,9 +1,10 @@
 pragma solidity 0.4.24;
 
-import "openzeppelin-eth/contracts/ownership/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "./UFragmentsPolicy.sol";
+import "./Policy.sol";
 
+import "@nomiclabs/buidler/console.sol";
 
 /**
  * @title Orchestrator
@@ -44,10 +45,12 @@ contract Orchestrator is Ownable {
     function rebase(uint256 _storedCurrentRate, uint256 _storedTargetRate)
         external
         onlyOwner
+        returns (uint256)
     {
+        console.log("Rebasing: ", msg.sender, tx.origin);
         require(msg.sender == tx.origin);  // solhint-disable-line avoid-tx-origin
 
-        policy.rebase(_storedCurrentRate, _storedTargetRate);
+        uint256 supplyAfterRebase = policy.rebase(_storedCurrentRate, _storedTargetRate);
 
         for (uint i = 0; i < transactions.length; i++) {
             Transaction storage t = transactions[i];
@@ -60,6 +63,8 @@ contract Orchestrator is Ownable {
                 }
             }
         }
+
+        return supplyAfterRebase;
     }
 
     /**
@@ -137,14 +142,14 @@ contract Orchestrator is Ownable {
             // First 32 bytes are the padded length of data, so exclude that
             let dataAddress := add(data, 32)
 
+            // 34710 is the value that solidity is currently emitting
+            // It includes callGas (700) + callVeryLow (3, to pay for SUB)
+            // + callValueTransferGas (9000) + callNewAccountGas
+            // (25000, in case the destination address does not exist and needs creating)
+            let newGas := sub(gas, 34710)
+
             result := call(
-                // 34710 is the value that solidity is currently emitting
-                // It includes callGas (700) + callVeryLow (3, to pay for SUB)
-                // + callValueTransferGas (9000) + callNewAccountGas
-                // (25000, in case the destination address does not exist and needs creating)
-                sub(gas, 34710),
-
-
+                newGas,
                 destination,
                 0, // transfer value in wei
                 dataAddress,

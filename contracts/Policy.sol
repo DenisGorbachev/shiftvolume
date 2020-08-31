@@ -1,11 +1,11 @@
 pragma solidity 0.4.24;
 
-import "openzeppelin-eth/contracts/math/SafeMath.sol";
-import "openzeppelin-eth/contracts/ownership/Ownable.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./lib/SafeMathInt.sol";
 import "./lib/UInt256Lib.sol";
-import "./UFragments.sol";
+import "./Tracker.sol";
 
 
 interface IOracle {
@@ -93,7 +93,11 @@ contract UFragmentsPolicy is Ownable {
      *      Where DeviationFromTargetRate is (MarketOracleRate - targetRate) / targetRate
      *      and targetRate is CpiOracleRate / baseCpi
      */
-    function rebase(uint256 _storedCurrentRate, uint256 _storedTargetRate) external onlyOrchestrator {
+    function rebase(uint256 _storedCurrentRate, uint256 _storedTargetRate)
+        external
+        onlyOrchestrator
+        returns (uint256)
+    {
         require(inRebaseWindow());
 
         // This comparison also ensures there is no reentrancy.
@@ -125,6 +129,8 @@ contract UFragmentsPolicy is Ownable {
         uint256 supplyAfterRebase = uFrags.rebase(epoch, supplyDelta);
         assert(supplyAfterRebase <= MAX_SUPPLY);
         emit LogRebase(epoch, storedCurrentRate, storedTargetRate, supplyDelta, now);
+
+        return supplyAfterRebase;
     }
 
     /**

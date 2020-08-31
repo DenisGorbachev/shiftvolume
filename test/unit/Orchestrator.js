@@ -24,7 +24,7 @@ async function setupContracts () {
   deployer = accounts[0];
   user = accounts[1];
   mockPolicy = await MockUFragmentsPolicy.new();
-  orchestrator = await Orchestrator.new(mockPolicy.address);
+  orchestrator = await Orchestrator.new(deployer, mockPolicy.address);
   mockDownstream = await MockDownstream.new();
 }
 
@@ -58,8 +58,9 @@ contract('Orchestrator', function (accounts) {
 
   describe('when transaction list is empty', async function () {
     before('calling rebase', async function () {
-      r = await orchestrator.rebase();
+      r = await debug(orchestrator.rebase(653313740501264965, 653313740501264965));
     });
+
 
     it('should have no transactions', async function () {
       (await orchestrator.transactionsSize.call()).should.be.bignumber.eq(0);
@@ -81,7 +82,7 @@ contract('Orchestrator', function (accounts) {
     before('adding a transaction', async function () {
       const updateOneArgEncoded = mockDownstream.contract.updateOneArg.getData(12345);
       orchestrator.addTransaction(mockDownstream.address, updateOneArgEncoded, {from: deployer});
-      r = await orchestrator.rebase();
+      r = await orchestrator.rebase(653313740501264965, 653313740501264965);
     });
 
     it('should have 1 transaction', async function () {
@@ -117,7 +118,7 @@ contract('Orchestrator', function (accounts) {
     before('adding a transaction', async function () {
       const updateTwoArgsEncoded = mockDownstream.contract.updateTwoArgs.getData(12345, 23456);
       orchestrator.addTransaction(mockDownstream.address, updateTwoArgsEncoded, {from: deployer});
-      r = await orchestrator.rebase();
+      r = await orchestrator.rebase(653313740501264965, 653313740501264965);
     });
 
     it('should have 2 transactions', async function () {
@@ -165,7 +166,7 @@ contract('Orchestrator', function (accounts) {
   describe('when 1st transaction is disabled', async function () {
     before('disabling a transaction', async function () {
       orchestrator.setTransactionEnabled(0, false);
-      r = await orchestrator.rebase();
+      r = await orchestrator.rebase(653313740501264965, 653313740501264965);
     });
 
     it('should have 2 transactions', async function () {
@@ -200,7 +201,7 @@ contract('Orchestrator', function (accounts) {
   describe('when a transaction is removed', async function () {
     before('removing 1st transaction', async function () {
       orchestrator.removeTransaction(0);
-      r = await orchestrator.rebase();
+      r = await orchestrator.rebase(653313740501264965, 653313740501264965);
     });
 
     it('should have 1 transaction', async function () {
@@ -235,7 +236,7 @@ contract('Orchestrator', function (accounts) {
   describe('when all transactions are removed', async function () {
     before('removing 1st transaction', async function () {
       orchestrator.removeTransaction(0);
-      r = await orchestrator.rebase();
+      r = await orchestrator.rebase(653313740501264965, 653313740501264965);
     });
 
     it('should have 0 transactions', async function () {
@@ -264,7 +265,7 @@ contract('Orchestrator', function (accounts) {
 
       const updateTwoArgsEncoded = mockDownstream.contract.updateTwoArgs.getData(12345, 23456);
       orchestrator.addTransaction(mockDownstream.address, updateTwoArgsEncoded, {from: deployer});
-      await expectRevert.unspecified(orchestrator.rebase());
+      await expectRevert.unspecified(orchestrator.rebase(653313740501264965, 653313740501264965));
     });
 
     it('should have 3 transactions', async function () {
