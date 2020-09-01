@@ -1,9 +1,11 @@
-pragma solidity 0.4.24;
+// SPDX-License-Identifier: ISC
+
+pragma solidity ^0.6.0;
 
 import "./Mock.sol";
 
 
-contract MockUFragments is Mock {
+contract MockTracker is Mock {
     uint256 private _supply;
 
     // Methods to mock data on the chain

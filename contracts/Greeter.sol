@@ -1,4 +1,5 @@
-//SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: ISC
+
 pragma solidity ^0.6.8;
 
 import "@nomiclabs/buidler/console.sol";

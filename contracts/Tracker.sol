@@ -1,23 +1,20 @@
-pragma solidity 0.4.24;
+// SPDX-License-Identifier: ISC
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+pragma solidity ^0.6.0;
 
+import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
+
+import "./lib/ERC20.sol";
 import "./lib/SafeMathInt.sol";
 
-
 /**
- * @title uFragments ERC20 token
- * @dev This is part of an implementation of the uFragments Ideal Money protocol.
- *      uFragments is a normal ERC20 token, but its supply can be adjusted by splitting and
- *      combining tokens proportionally across all wallets.
- *
- *      uFragment balances are internally represented with a hidden denomination, 'gons'.
+ * @title Tracker ERC20 token
+ * @dev Balances are internally represented with a hidden denomination, 'gons'.
  *      We support splitting the currency in expansion and combining the currency on contraction by
  *      changing the exchange rate between the hidden 'gons' and the public 'fragments'.
  */
-contract UFragments is ERC20, Ownable {
+contract Tracker is ERC20UpgradeSafe, OwnableUpgradeSafe {
     // PLEASE READ BEFORE CHANGING ANY ACCOUNTING OR MATH
     // Anytime there is division, there is a risk of numerical instability from rounding errors. In
     // order to minimize this risk, we adhere to the following guidelines:
@@ -77,6 +74,9 @@ contract UFragments is ERC20, Ownable {
     // it's fully paid.
     mapping (address => mapping (address => uint256)) private _allowedFragments;
 
+    // Reserved storage space to allow for layout changes in the future.
+    uint256[50] private ______gap;
+
     /**
      * @param monetaryPolicy_ The address of the monetary policy contract to use for authentication.
      */
@@ -130,27 +130,29 @@ contract UFragments is ERC20, Ownable {
         return _totalSupply;
     }
 
-    function initialize(address owner_)
+    function initialize(string memory name_, string memory symbol_)
         public
         initializer
     {
-        ERC20.initialize("SideShift Volume Tracker", "SVT", uint8(DECIMALS));
-        Ownable.initialize(owner_);
+        __Ownable_init();
+        __ERC20_init(name_, symbol_);
+        _setupDecimals(uint8(DECIMALS));
 
         rebasePausedDeprecated = false;
         tokenPausedDeprecated = false;
 
         _totalSupply = INITIAL_FRAGMENTS_SUPPLY;
-        _gonBalances[owner_] = TOTAL_GONS;
+        _gonBalances[owner()] = TOTAL_GONS;
         _gonsPerFragment = TOTAL_GONS.div(_totalSupply);
 
-        emit Transfer(address(0x0), owner_, _totalSupply);
+        emit Transfer(address(0x0), owner(), _totalSupply);
     }
 
     /**
      * @return The total number of fragments.
      */
     function totalSupply()
+        override
         public
         view
         returns (uint256)
@@ -163,6 +165,7 @@ contract UFragments is ERC20, Ownable {
      * @return The balance of the specified address.
      */
     function balanceOf(address who)
+        override
         public
         view
         returns (uint256)
@@ -177,6 +180,7 @@ contract UFragments is ERC20, Ownable {
      * @return True on success, false otherwise.
      */
     function transfer(address to, uint256 value)
+        override
         public
         validRecipient(to)
         returns (bool)
@@ -195,6 +199,7 @@ contract UFragments is ERC20, Ownable {
      * @return The number of tokens still available for the spender.
      */
     function allowance(address owner_, address spender)
+        override
         public
         view
         returns (uint256)
@@ -209,6 +214,7 @@ contract UFragments is ERC20, Ownable {
      * @param value The amount of tokens to be transferred.
      */
     function transferFrom(address from, address to, uint256 value)
+        override
         public
         validRecipient(to)
         returns (bool)
@@ -235,6 +241,7 @@ contract UFragments is ERC20, Ownable {
      * @param value The amount of tokens to be spent.
      */
     function approve(address spender, uint256 value)
+        override
         public
         returns (bool)
     {
@@ -251,6 +258,7 @@ contract UFragments is ERC20, Ownable {
      * @param addedValue The amount of tokens to increase the allowance by.
      */
     function increaseAllowance(address spender, uint256 addedValue)
+        override
         public
         returns (bool)
     {
@@ -267,6 +275,7 @@ contract UFragments is ERC20, Ownable {
      * @param subtractedValue The amount of tokens to decrease the allowance by.
      */
     function decreaseAllowance(address spender, uint256 subtractedValue)
+        override
         public
         returns (bool)
     {

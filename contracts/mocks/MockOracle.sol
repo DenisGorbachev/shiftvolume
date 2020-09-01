@@ -1,4 +1,6 @@
-pragma solidity 0.4.24;
+// SPDX-License-Identifier: ISC
+
+pragma solidity ^0.6.0;
 
 import "./Mock.sol";
 
@@ -8,7 +10,7 @@ contract MockOracle is Mock {
     uint256 private _data;
     string public name;
 
-    constructor(string name_) public {
+    constructor(string memory name_) public {
         name = name_;
     }
 

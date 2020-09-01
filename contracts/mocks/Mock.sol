@@ -1,5 +1,6 @@
-pragma solidity 0.4.24;
+// SPDX-License-Identifier: ISC
 
+pragma solidity ^0.6.0;
 
 contract Mock {
     event FunctionCalled(string instanceName, string functionName, address caller);

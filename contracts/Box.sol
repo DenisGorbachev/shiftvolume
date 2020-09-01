@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: ISC
+
 pragma solidity ^0.6.12;
 
 contract Box {

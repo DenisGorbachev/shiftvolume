@@ -1,6 +1,8 @@
-pragma solidity 0.4.24;
+// SPDX-License-Identifier: ISC
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+pragma solidity ^0.6.0;
+
+import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 
 import "./Policy.sol";
 
@@ -11,7 +13,10 @@ import "@nomiclabs/buidler/console.sol";
  * @notice The orchestrator is the main entry point for rebase operations. It coordinates the policy
  * actions with external consumers.
  */
-contract Orchestrator is Ownable {
+contract Orchestrator is OwnableUpgradeSafe {
+    using SafeMath for uint256;
+    using SafeMathInt for int256;
+    using UInt256Lib for uint256;
 
     struct Transaction {
         bool enabled;
@@ -24,14 +29,17 @@ contract Orchestrator is Ownable {
     // Stable ordering is not guaranteed.
     Transaction[] public transactions;
 
-    UFragmentsPolicy public policy;
+    Policy public policy;
 
-    function initialize(address owner_, address policy_)
+    // Reserved storage space to allow for layout changes in the future.
+    uint256[50] private ______gap;
+
+    function initialize(address policy_)
         public
         initializer
     {
-        Ownable.initialize(owner_);
-        policy = UFragmentsPolicy(policy_);
+        __Ownable_init();
+        policy = Policy(policy_);
     }
 
     /**
@@ -72,7 +80,7 @@ contract Orchestrator is Ownable {
      * @param destination Address of contract destination
      * @param data Transaction data payload
      */
-    function addTransaction(address destination, bytes data)
+    function addTransaction(address destination, bytes calldata data)
         external
         onlyOwner
     {
@@ -92,12 +100,15 @@ contract Orchestrator is Ownable {
         onlyOwner
     {
         require(index < transactions.length, "index out of bounds");
+        Transaction[] storage _transactions;
 
-        if (index < transactions.length - 1) {
-            transactions[index] = transactions[transactions.length - 1];
+        for (uint i = 0; i < transactions.length; i++) {
+            if (i != index) {
+                _transactions.push(transactions[i]);
+            }
         }
 
-        transactions.length--;
+        transactions = _transactions;
     }
 
     /**
@@ -129,7 +140,7 @@ contract Orchestrator is Ownable {
      * @param data The encoded data payload.
      * @return True on success
      */
-    function externalCall(address destination, bytes data)
+    function externalCall(address destination, bytes memory data)
         internal
         returns (bool)
     {
@@ -146,7 +157,7 @@ contract Orchestrator is Ownable {
             // It includes callGas (700) + callVeryLow (3, to pay for SUB)
             // + callValueTransferGas (9000) + callNewAccountGas
             // (25000, in case the destination address does not exist and needs creating)
-            let newGas := sub(gas, 34710)
+            let newGas := sub(gas(), 34710)
 
             result := call(
                 newGas,

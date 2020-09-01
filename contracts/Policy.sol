@@ -1,7 +1,9 @@
-pragma solidity 0.4.24;
+// SPDX-License-Identifier: ISC
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+pragma solidity ^0.6.0;
+
+import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 
 import "./lib/SafeMathInt.sol";
 import "./lib/UInt256Lib.sol";
@@ -22,7 +24,7 @@ interface IOracle {
  *      This component regulates the token supply of the uFragments ERC20 token in response to
  *      market oracles.
  */
-contract UFragmentsPolicy is Ownable {
+contract Policy is OwnableUpgradeSafe {
     using SafeMath for uint256;
     using SafeMathInt for int256;
     using UInt256Lib for uint256;
@@ -35,7 +37,7 @@ contract UFragmentsPolicy is Ownable {
         uint256 timestampSec
     );
 
-    UFragments public uFrags;
+    Tracker public tracker;
 
     // Current price (as an 18 decimal fixed point number)
     uint256 public storedCurrentRate;
@@ -62,10 +64,10 @@ contract UFragmentsPolicy is Ownable {
 
     // The rebase window begins this many seconds into the minRebaseTimeInterval period.
     // For example if minRebaseTimeInterval is 24hrs, it represents the time of day in seconds.
-    uint256 public rebaseWindowOffsetSec = 7200;
+    uint256 public rebaseWindowOffsetSec;
 
     // The length of the time window where a rebase operation is allowed to execute, in seconds.
-    uint256 public rebaseWindowLengthSec = 1200;
+    uint256 public rebaseWindowLengthSec;
 
     // The number of rebase cycles since inception
     uint256 public epoch;
@@ -80,6 +82,9 @@ contract UFragmentsPolicy is Ownable {
 
     // This module orchestrates the rebase execution and downstream notification.
     address public orchestrator;
+
+    // Reserved storage space to allow for layout changes in the future.
+    uint256[50] private ______gap;
 
     modifier onlyOrchestrator() {
         require(msg.sender == orchestrator);
@@ -101,11 +106,11 @@ contract UFragmentsPolicy is Ownable {
         require(inRebaseWindow());
 
         // This comparison also ensures there is no reentrancy.
-        require(lastRebaseTimestampSec.add(minRebaseTimeIntervalSec) < now);
+        require(lastRebaseTimestampSec.add(minRebaseTimeIntervalSec) < block.timestamp);
 
         // Snap the rebase time to the start of this window.
-        lastRebaseTimestampSec = now.sub(
-            now.mod(minRebaseTimeIntervalSec)).add(rebaseWindowOffsetSec);
+        lastRebaseTimestampSec = block.timestamp.sub(
+            block.timestamp.mod(minRebaseTimeIntervalSec)).add(rebaseWindowOffsetSec);
 
         epoch = epoch.add(1);
 
@@ -122,13 +127,13 @@ contract UFragmentsPolicy is Ownable {
         // Apply the Dampening factor.
         supplyDelta = supplyDelta.div(rebaseLag.toInt256Safe());
 
-        if (supplyDelta > 0 && uFrags.totalSupply().add(uint256(supplyDelta)) > MAX_SUPPLY) {
-            supplyDelta = (MAX_SUPPLY.sub(uFrags.totalSupply())).toInt256Safe();
+        if (supplyDelta > 0 && tracker.totalSupply().add(uint256(supplyDelta)) > MAX_SUPPLY) {
+            supplyDelta = (MAX_SUPPLY.sub(tracker.totalSupply())).toInt256Safe();
         }
 
-        uint256 supplyAfterRebase = uFrags.rebase(epoch, supplyDelta);
+        uint256 supplyAfterRebase = tracker.rebase(epoch, supplyDelta);
         assert(supplyAfterRebase <= MAX_SUPPLY);
-        emit LogRebase(epoch, storedCurrentRate, storedTargetRate, supplyDelta, now);
+        emit LogRebase(epoch, storedCurrentRate, storedTargetRate, supplyDelta, block.timestamp);
 
         return supplyAfterRebase;
     }
@@ -205,11 +210,11 @@ contract UFragmentsPolicy is Ownable {
      *      It is called at the time of contract creation to invoke parent class initializers and
      *      initialize the contract's state variables.
      */
-    function initialize(address owner_, UFragments uFrags_)
+    function initialize(Tracker tracker_)
         public
         initializer
     {
-        Ownable.initialize(owner_);
+        __Ownable_init();
 
         // deviationThreshold = 0.05e18 = 5e16
         deviationThreshold = 5 * 10 ** (DECIMALS-2);
@@ -222,7 +227,7 @@ contract UFragmentsPolicy is Ownable {
         lastRebaseTimestampSec = 0;
         epoch = 0;
 
-        uFrags = uFrags_;
+        tracker = tracker_;
     }
 
     /**
@@ -231,8 +236,8 @@ contract UFragmentsPolicy is Ownable {
      */
     function inRebaseWindow() public view returns (bool) {
         return (
-            now.mod(minRebaseTimeIntervalSec) >= rebaseWindowOffsetSec &&
-            now.mod(minRebaseTimeIntervalSec) < (rebaseWindowOffsetSec.add(rebaseWindowLengthSec))
+            block.timestamp.mod(minRebaseTimeIntervalSec) >= rebaseWindowOffsetSec &&
+            block.timestamp.mod(minRebaseTimeIntervalSec) < (rebaseWindowOffsetSec.add(rebaseWindowLengthSec))
         );
     }
 
@@ -251,7 +256,7 @@ contract UFragmentsPolicy is Ownable {
 
         // supplyDelta = totalSupply * (rate - targetRate) / targetRate
         int256 targetRateSigned = targetRate.toInt256Safe();
-        return uFrags.totalSupply().toInt256Safe()
+        return tracker.totalSupply().toInt256Safe()
             .mul(rate.toInt256Safe().sub(targetRateSigned))
             .div(targetRateSigned);
     }
@@ -274,6 +279,4 @@ contract UFragmentsPolicy is Ownable {
             || (rate < targetRate && targetRate.sub(rate) < absoluteDeviationThreshold);
     }
 
-    // Reserved storage space to allow for layout changes in the future.
-    uint256[50] private ______gap;
 }

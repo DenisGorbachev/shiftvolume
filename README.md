@@ -70,3 +70,7 @@ npm run coverage
 - Orchestrator: [TODO](https://kovan.etherscan.io/address/TODO)
 - Market Oracle: [TODO](https://kovan.etherscan.io/address/TODO)
 - CPI Oracle: [TODO](https://kovan.etherscan.io/address/TODO)
+
+## Notes
+
+* [Avoiding Initial Values in Field Declarations](https://docs.openzeppelin.com/upgrades/2.8/writing-upgradeable#avoid-initial-values-in-field-declarations)
